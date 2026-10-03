@@ -1,0 +1,19 @@
+target-version = "py312"
+line-length = 100
+extend-exclude = ["airflow/dbt"]
+
+[lint]
+select = [
+  "E",   # pycodestyle errors
+  "F",   # pyflakes
+  "W",   # pycodestyle warnings
+  "I",   # import sorting
+  "B",   # bugbear
+  "UP",  # pyupgrade
+  "SIM", # simplify
+  "S",   # bandit security checks
+]
+ignore = ["E501"]  # line length is handled by the formatter
+
+[lint.per-file-ignores]
+"**/tests/**" = ["S101"]  # assert is fine in tests
