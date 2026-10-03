@@ -1,0 +1,83 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# No AWS credentials are used anywhere in CI.
+# Jobs for folders that don't exist yet skip their steps, so the workflow is green from day one.
+# dbt parse and the Airflow DAG integrity test are added in their own commit groups.
+
+jobs:
+  pre-commit:
+    name: lint (pre-commit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - name: Run pre-commit on all files
+        run: |
+          pip install pre-commit
+          pre-commit run --all-files --show-diff-on-failure
+
+  python-tests:
+    name: pytest (ingestion)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for the ingestion package
+        id: present
+        run: echo "found=${{ hashFiles('ingestion/pyproject.toml') != '' }}" >> "$GITHUB_OUTPUT"
+      - if: steps.present.outputs.found == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - if: steps.present.outputs.found == 'true'
+        name: Install and test
+        run: |
+          pip install -e "ingestion[dev]"
+          pytest ingestion -q
+
+  terraform:
+    name: terraform validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for Terraform files
+        id: present
+        run: echo "found=${{ hashFiles('infra/*.tf') != '' }}" >> "$GITHUB_OUTPUT"
+      - if: steps.present.outputs.found == 'true'
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - if: steps.present.outputs.found == 'true'
+        name: Init and validate (no backend, no credentials)
+        working-directory: infra
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+
+  docker-build:
+    name: docker build (ingestion image)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for the Dockerfile
+        id: present
+        run: echo "found=${{ hashFiles('ingestion/Dockerfile') != '' }}" >> "$GITHUB_OUTPUT"
+      - if: steps.present.outputs.found == 'true'
+        name: Build the image
+        run: docker build -t dc-bikeshare-ingest:ci ingestion
