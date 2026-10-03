@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help setup lint update-hooks
+.PHONY: help setup lint update-hooks tf-init tf-plan tf-apply tf-destroy tf-validate
 
 help: ## List available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-14s %s\n", $$1, $$2}'
@@ -12,3 +12,19 @@ lint: ## Run every pre-commit check on all files
 
 update-hooks: ## Bump pre-commit hooks to their latest versions
 	pre-commit autoupdate
+
+tf-init: ## Terraform init (downloads the AWS provider)
+	terraform -chdir=infra init
+
+tf-validate: ## Terraform format check and validate
+	terraform -chdir=infra fmt -check -recursive
+	terraform -chdir=infra validate
+
+tf-plan: ## Show what Terraform would change
+	terraform -chdir=infra plan -out=bikeshare.tfplan
+
+tf-apply: ## Apply the plan saved by tf-plan
+	terraform -chdir=infra apply bikeshare.tfplan
+
+tf-destroy: ## Delete every resource this project created
+	terraform -chdir=infra destroy
