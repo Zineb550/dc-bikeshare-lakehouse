@@ -1,0 +1,38 @@
+{
+  "last_updated": 1790882900,
+  "ttl": 60,
+  "version": "2.3",
+  "data": {
+    "stations": [
+      {
+        "station_id": "0825be94-1f3f-11e7-bf6b-3863bb334450",
+        "short_name": "31312",
+        "name": "Wisconsin Ave & O St NW",
+        "lat": 38.90849,
+        "lon": -77.063586,
+        "capacity": 8,
+        "region_id": "42",
+        "is_charging": false
+      },
+      {
+        "station_id": "2061578790793374684",
+        "short_name": "32014",
+        "name": "Friendship Hts Metro / Wisconsin Ave & Wisconsin Cir",
+        "lat": 38.961763,
+        "lon": -77.085998,
+        "capacity": 16,
+        "region_id": "104",
+        "is_charging": false
+      },
+      {
+        "station_id": "6edca550-d78f-4c5d-ad2c-79d1ce88c48d",
+        "short_name": "31139",
+        "name": "20th & M St NW",
+        "lat": 38.905496,
+        "lon": -77.044976,
+        "capacity": 19,
+        "is_charging": false
+      }
+    ]
+  }
+}

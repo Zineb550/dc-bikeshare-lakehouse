@@ -22,3 +22,13 @@ output "alerts_topic_arn" {
   description = "SNS topic that receives every alert."
   value       = aws_sns_topic.alerts.arn
 }
+
+output "ingest_function_name" {
+  description = "Name of the ingest Lambda function."
+  value       = aws_lambda_function.ingest.function_name
+}
+
+output "ecr_repository_url" {
+  description = "ECR repository for the ingest image."
+  value       = aws_ecr_repository.ingest.repository_url
+}
