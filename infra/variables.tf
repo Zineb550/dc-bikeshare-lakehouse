@@ -15,6 +15,12 @@ variable "monthly_budget_usd" {
   default     = 5
 }
 
+variable "collection_enabled" {
+  description = "Turn the 15-minute GBFS schedule on or off without destroying anything."
+  type        = bool
+  default     = true
+}
+
 variable "athena_scan_cap_bytes" {
   description = "Per-query bytes-scanned limit enforced by the Athena workgroup (minimum 10 MB)."
   type        = number
