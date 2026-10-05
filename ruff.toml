@@ -19,4 +19,5 @@ ignore = ["E501"]  # line length is handled by the formatter
 "**/tests/**" = ["S101"]  # assert is fine in tests
 
 [lint.isort]
-known-first-party = ["bikeshare_ingest"]
+known-first-party = ["bikeshare_ingest", "include"]
+known-third-party = ["airflow"]

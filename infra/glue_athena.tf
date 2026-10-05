@@ -219,3 +219,58 @@ resource "aws_glue_catalog_table" "weather_raw" {
     }
   }
 }
+
+# --- ops.run_log: one JSON line per Lambda feed or Airflow task run ---
+resource "aws_glue_catalog_table" "run_log" {
+  name          = "run_log"
+  database_name = aws_glue_catalog_database.layer["ops"].name
+  description   = "Run metadata written by the ingest Lambda and the Airflow DAGs"
+  table_type    = "EXTERNAL_TABLE"
+
+  parameters = {
+    "classification"              = "json"
+    "projection.enabled"          = "true"
+    "projection.dt.type"          = "date"
+    "projection.dt.format"        = "yyyy-MM-dd"
+    "projection.dt.range"         = "2026-10-01,NOW"
+    "projection.dt.interval"      = "1"
+    "projection.dt.interval.unit" = "DAYS"
+    "storage.location.template"   = "s3://${aws_s3_bucket.lake.bucket}/ops/run_log/dt=$${dt}/"
+  }
+
+  partition_keys {
+    name = "dt"
+    type = "string"
+  }
+
+  storage_descriptor {
+    location      = "s3://${aws_s3_bucket.lake.bucket}/ops/run_log/"
+    input_format  = "org.apache.hadoop.mapred.TextInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat"
+
+    ser_de_info {
+      serialization_library = "org.openx.data.jsonserde.JsonSerDe"
+    }
+
+    dynamic "columns" {
+      for_each = {
+        run_id      = "string"
+        source      = "string"
+        mode        = "string"
+        period      = "string"
+        status      = "string"
+        rows        = "bigint"
+        bytes       = "bigint"
+        object_key  = "string"
+        duration_ms = "bigint"
+        error       = "string"
+        started_at  = "string"
+      }
+
+      content {
+        name = columns.key
+        type = columns.value
+      }
+    }
+  }
+}
