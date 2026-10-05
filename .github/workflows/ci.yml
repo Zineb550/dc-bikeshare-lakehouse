@@ -14,7 +14,7 @@ concurrency:
 
 # No AWS credentials are used anywhere in CI.
 # Jobs for folders that don't exist yet skip their steps, so the workflow is green from day one.
-# dbt parse and the Airflow DAG integrity test are added in their own commit groups.
+# dbt parse is added with the dbt project (group 6).
 
 jobs:
   pre-commit:
@@ -81,3 +81,21 @@ jobs:
       - if: steps.present.outputs.found == 'true'
         name: Build the image
         run: docker build -t dc-bikeshare-ingest:ci ingestion
+
+  airflow:
+    name: airflow (dag tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for the Astro project
+        id: present
+        run: echo "found=${{ hashFiles('airflow/Dockerfile') != '' }}" >> "$GITHUB_OUTPUT"
+      - if: steps.present.outputs.found == 'true'
+        name: Install the Astro CLI
+        run: curl -sSL install.astronomer.io | sudo bash -s
+      - if: steps.present.outputs.found == 'true'
+        name: DAG integrity and helper tests (inside the Airflow image)
+        working-directory: airflow
+        run: |
+          touch .env
+          astro dev pytest tests
