@@ -6,7 +6,8 @@ ECR_REGISTRY = $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
 ECR_REPO = $(ECR_REGISTRY)/dc-bikeshare-ingest
 VENV = .venv
 .PHONY: help setup lint update-hooks venv test tf-init tf-plan tf-apply tf-destroy tf-validate \
-	tf-apply-ecr image-push invoke-gbfs invoke-trips invoke-weather deploy-image
+	tf-apply-ecr image-push invoke-gbfs invoke-trips invoke-weather deploy-image \
+	airflow-start airflow-stop airflow-test airflow-parse
 
 help: ## List available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-14s %s\n", $$1, $$2}'
@@ -66,3 +67,15 @@ invoke-weather: ## Fetch the last 7 days of weather (forecast mode)
 		--payload '{"source": "weather", "mode": "forecast"}' /dev/stdout
 
 deploy-image: image-push tf-plan ## Push a new image, then plan (review it, then make tf-apply)
+
+airflow-start: ## Start local Airflow (UI on http://localhost:8080)
+	cd airflow && astro dev start
+
+airflow-stop: ## Stop local Airflow and free its memory (collection keeps running in AWS)
+	cd airflow && astro dev stop
+
+airflow-test: ## Run the DAG integrity and helper tests inside the Airflow image
+	cd airflow && astro dev pytest tests
+
+airflow-parse: ## Check that every DAG imports without errors
+	cd airflow && astro dev parse

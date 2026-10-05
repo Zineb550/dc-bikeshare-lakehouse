@@ -32,3 +32,8 @@ output "ecr_repository_url" {
   description = "ECR repository for the ingest image."
   value       = aws_ecr_repository.ingest.repository_url
 }
+
+output "airflow_user" {
+  description = "IAM user for local Airflow and dbt; create its access key with the AWS CLI."
+  value       = aws_iam_user.airflow.name
+}
