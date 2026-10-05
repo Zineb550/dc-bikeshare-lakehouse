@@ -6,7 +6,7 @@ ECR_REGISTRY = $(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
 ECR_REPO = $(ECR_REGISTRY)/dc-bikeshare-ingest
 VENV = .venv
 .PHONY: help setup lint update-hooks venv test tf-init tf-plan tf-apply tf-destroy tf-validate \
-	tf-apply-ecr image-push invoke-gbfs
+	tf-apply-ecr image-push invoke-gbfs invoke-trips invoke-weather deploy-image
 
 help: ## List available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-14s %s\n", $$1, $$2}'
@@ -55,3 +55,14 @@ image-push: ## Build the ingest image for Lambda (amd64) and push it as :latest
 invoke-gbfs: ## Run one GBFS collection now (manual mode, includes station information)
 	aws lambda invoke --function-name dc-bikeshare-ingest --cli-binary-format raw-in-base64-out \
 		--payload '{"source": "gbfs", "mode": "manual", "force_info": true}' /dev/stdout
+
+invoke-trips: ## Load one trip month into bronze, e.g. make invoke-trips MONTH=2026-08
+	@test -n "$(MONTH)" || (echo "Usage: make invoke-trips MONTH=YYYY-MM" && exit 1)
+	aws lambda invoke --function-name dc-bikeshare-ingest --cli-binary-format raw-in-base64-out \
+		--cli-read-timeout 310 --payload '{"source": "trips", "month": "$(MONTH)"}' /dev/stdout
+
+invoke-weather: ## Fetch the last 7 days of weather (forecast mode)
+	aws lambda invoke --function-name dc-bikeshare-ingest --cli-binary-format raw-in-base64-out \
+		--payload '{"source": "weather", "mode": "forecast"}' /dev/stdout
+
+deploy-image: image-push tf-plan ## Push a new image, then plan (review it, then make tf-apply)
