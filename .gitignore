@@ -44,7 +44,6 @@ logs/
 .user.yml
 
 # --- Airflow / Astro (the Astro project adds its own .gitignore too) ---
-airflow/.astro/
 airflow/airflow_settings.yaml
 
 # --- Data files: this repo holds code only, never data ---
@@ -67,3 +66,4 @@ metabase-data/
 .DS_Store
 Thumbs.db
 desktop.ini
+airflow/.astro/config.yaml.lock
