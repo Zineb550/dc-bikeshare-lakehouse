@@ -11,6 +11,7 @@ DAGS_DIR = Path(__file__).resolve().parents[2] / "dags"
 @pytest.fixture(scope="module")
 def dagbag():
     # Only dag_folder: the constructor's other arguments changed across Airflow 3 releases.
+    # Tests read dagbag.dags (in memory); get_dag() queries the metadata DB, which is empty here.
     return DagBag(dag_folder=str(DAGS_DIR))
 
 
@@ -30,13 +31,13 @@ def test_expected_dags_are_present(dagbag):
     ],
 )
 def test_task_order(dagbag, dag_id, tasks):
-    dag = dagbag.get_dag(dag_id)
+    dag = dagbag.dags[dag_id]
     assert [t.task_id for t in dag.topological_sort()] == tasks
 
 
 @pytest.mark.parametrize("dag_id", ["daily_pipeline", "trips_monthly"])
 def test_dags_are_safe_for_backfill(dagbag, dag_id):
-    dag = dagbag.get_dag(dag_id)
+    dag = dagbag.dags[dag_id]
     assert dag.catchup is True
     assert dag.max_active_runs == 1
     assert "bikeshare" in dag.tags
@@ -44,10 +45,10 @@ def test_dags_are_safe_for_backfill(dagbag, dag_id):
 
 @pytest.mark.parametrize("dag_id", ["daily_pipeline", "trips_monthly"])
 def test_every_task_alerts_on_failure(dagbag, dag_id):
-    for t in dagbag.get_dag(dag_id).tasks:
+    for t in dagbag.dags[dag_id].tasks:
         assert t.on_failure_callback, f"{dag_id}.{t.task_id} has no failure alert"
 
 
 def test_run_log_task_runs_even_after_failures(dagbag):
     for dag_id in ("daily_pipeline", "trips_monthly"):
-        assert dagbag.get_dag(dag_id).get_task("write_run_log").trigger_rule == "all_done"
+        assert dagbag.dags[dag_id].get_task("write_run_log").trigger_rule == "all_done"
