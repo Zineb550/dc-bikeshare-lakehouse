@@ -6,3 +6,8 @@ logs/
 .venv
 airflow.db
 airflow.cfg
+
+# dbt artifacts
+dbt/target
+dbt/logs
+dbt/.user.yml
