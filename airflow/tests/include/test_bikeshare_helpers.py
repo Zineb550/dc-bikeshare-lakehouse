@@ -155,3 +155,51 @@ def test_record_from_failed_task():
 def test_object_name_is_s3_safe():
     name = runlog.object_name("daily_pipeline", "scheduled__2026-10-05T01:15:00+00:00")
     assert name == "airflow-daily_pipeline-scheduled__2026-10-05T01_15_00_00_00"
+
+
+# --- dbt -----------------------------------------------------------------------
+
+
+def test_day_vars_cover_one_utc_day():
+    from include.bikeshare import dbt
+
+    assert dbt.day_vars(date(2026, 10, 31)) == {"start": "2026-10-31", "end": "2026-11-01"}
+
+
+def test_dbt_command_has_private_artifacts_and_vars(tmp_path):
+    from include.bikeshare import dbt
+
+    command = dbt.build_command(["build", "--select", "fct_trip+"], tmp_path, {"month": "2026-08"})
+    assert command[0].endswith("dbt_venv/bin/dbt")
+    assert command[1:4] == ["build", "--select", "fct_trip+"]
+    assert command[command.index("--target-path") + 1] == str(tmp_path / "target")
+    assert json.loads(command[command.index("--vars") + 1]) == {"month": "2026-08"}
+
+
+def test_artifacts_dir_is_safe_for_run_ids():
+    from include.bikeshare import dbt
+
+    path = dbt.artifacts_dir("daily_pipeline", "scheduled__2026-10-05T01:15:00+00:00", "dbt_build")
+    assert ":" not in str(path) and "+" not in str(path)
+
+
+def test_summarize_counts_statuses(tmp_path):
+    from include.bikeshare import dbt
+
+    results = tmp_path / "run_results.json"
+    results.write_text(
+        json.dumps({"results": [{"status": "pass"}, {"status": "pass"}, {"status": "warn"}]})
+    )
+    assert dbt.summarize(results) == {"pass": 2, "warn": 1}
+    assert dbt.summarize(tmp_path / "missing.json") == {}
+
+
+def test_failed_dbt_run_raises(tmp_path, monkeypatch):
+    from include.bikeshare import dbt
+
+    class Done:
+        returncode, stdout, stderr = 1, "boom", ""
+
+    monkeypatch.setattr(dbt.subprocess, "run", lambda *a, **k: Done())
+    with pytest.raises(dbt.DbtError):
+        dbt.run(["build"], target_dir=tmp_path)

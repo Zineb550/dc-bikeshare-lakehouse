@@ -1,4 +1,4 @@
-"""daily_pipeline: weather for the day just finished, then (from group 6) dbt build.
+"""daily_pipeline: weather for the day just finished, then dbt (freshness, build).
 
 Fires at 01:15 UTC on day D and processes day D-1. GBFS snapshots are not collected
 here: EventBridge Scheduler + Lambda collect them every 15 minutes, laptop or not.
@@ -11,8 +11,10 @@ from datetime import UTC, datetime, timedelta
 from airflow.sdk import TriggerRule, dag, task
 from airflow.timetables.trigger import CronTriggerTimetable
 
-from include.bikeshare import lambda_client, periods, runlog
+from include.bikeshare import dbt, lambda_client, periods, runlog
 from include.bikeshare.alerts import notify_failure
+
+TASKS_LOGGED = ["invoke_weather", "dbt_source_freshness", "dbt_build"]
 
 DEFAULT_ARGS = {
     "owner": "bikeshare",
@@ -39,6 +41,31 @@ def daily_pipeline():
         event = periods.weather_event(day, today=datetime.now(UTC).date())
         return lambda_client.invoke(event)
 
+    @task(retries=0)
+    def dbt_source_freshness(**context) -> dict:
+        ti = context["ti"]
+        return dbt.run(
+            [
+                "source",
+                "freshness",
+                "--select",
+                "source:bronze.gbfs_station_status",
+                "source:bronze.weather_raw",
+            ],
+            target_dir=dbt.artifacts_dir(ti.dag_id, ti.run_id, ti.task_id),
+        )
+
+    @task(retries=1)
+    def dbt_build(**context) -> dict:
+        # Everything except trips (trips_monthly builds fct_trip and what depends on it).
+        ti = context["ti"]
+        day = periods.target_day(context["logical_date"] or datetime.now(UTC))
+        return dbt.run(
+            ["build", "--exclude", "fct_trip+"],
+            target_dir=dbt.artifacts_dir(ti.dag_id, ti.run_id, ti.task_id),
+            dbt_vars=dbt.day_vars(day),
+        )
+
     @task(trigger_rule=TriggerRule.ALL_DONE, retries=0)
     def write_run_log(**context) -> str:
         ti, dag_run = context["ti"], context["dag_run"]
@@ -52,11 +79,11 @@ def daily_pipeline():
                 period=day.isoformat(),
                 result=ti.xcom_pull(task_ids=task_id),
             )
-            for task_id in ["invoke_weather"]
+            for task_id in TASKS_LOGGED
         ]
         return runlog.write(records, dag_id=ti.dag_id, run_id=ti.run_id)
 
-    invoke_weather() >> write_run_log()
+    invoke_weather() >> dbt_source_freshness() >> dbt_build() >> write_run_log()
 
 
 daily_pipeline()
