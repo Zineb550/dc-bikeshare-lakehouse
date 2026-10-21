@@ -1,0 +1,17 @@
+# No secrets here: credentials come from the environment (airflow/.env locally,
+# the same variables inside the Airflow containers).
+bikeshare:
+  target: dev
+  outputs:
+    dev:
+      type: athena
+      region_name: "{{ env_var('AWS_DEFAULT_REGION', 'us-east-1') }}"
+      database: awsdatacatalog
+      schema: silver
+      work_group: bikeshare
+      s3_staging_dir: "s3://{{ env_var('BIKESHARE_LAKE_BUCKET') }}/athena-results/dbt/"
+      # Tables land in s3://<bucket>/<schema>/<table>/<uuid>/, i.e. under silver/ or gold/.
+      s3_data_dir: "s3://{{ env_var('BIKESHARE_LAKE_BUCKET') }}/"
+      s3_data_naming: schema_table_unique
+      threads: 4
+      num_retries: 2

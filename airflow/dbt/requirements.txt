@@ -1,0 +1,3 @@
+# dbt runs in its own virtualenv (locally .venv-dbt, in the Airflow image /usr/local/airflow/dbt_venv).
+dbt-core==1.12.6
+dbt-athena==1.11.1

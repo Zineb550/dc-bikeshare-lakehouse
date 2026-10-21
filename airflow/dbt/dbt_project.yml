@@ -1,0 +1,28 @@
+name: bikeshare
+version: "1.0.0"
+config-version: 2
+profile: bikeshare
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  bikeshare:
+    staging:
+      # Views: cast and unnest bronze, never stored. Filters on dt / month / fetch_date
+      # pass through the view, so partition projection still prunes.
+      +schema: silver
+      +materialized: view
+    silver:
+      +schema: silver
+    gold:
+      +schema: gold
+      +materialized: table
+
+seeds:
+  bikeshare:
+    +schema: silver
