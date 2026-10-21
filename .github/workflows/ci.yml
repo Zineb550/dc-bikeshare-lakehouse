@@ -14,7 +14,6 @@ concurrency:
 
 # No AWS credentials are used anywhere in CI.
 # Jobs for folders that don't exist yet skip their steps, so the workflow is green from day one.
-# dbt parse is added with the dbt project (group 6).
 
 jobs:
   pre-commit:
@@ -99,3 +98,25 @@ jobs:
         run: |
           touch .env
           astro dev pytest tests
+
+  dbt:
+    name: dbt parse
+    runs-on: ubuntu-latest
+    env:
+      # Parse never connects to Athena; the profile only needs these to render.
+      AWS_DEFAULT_REGION: us-east-1
+      BIKESHARE_LAKE_BUCKET: ci-dummy-bucket
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for the dbt project
+        id: present
+        run: echo "found=${{ hashFiles('airflow/dbt/dbt_project.yml') != '' }}" >> "$GITHUB_OUTPUT"
+      - if: steps.present.outputs.found == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - if: steps.present.outputs.found == 'true'
+        name: Install dbt and parse the project
+        run: |
+          pip install -r airflow/dbt/requirements.txt
+          dbt parse --project-dir airflow/dbt --profiles-dir airflow/dbt
