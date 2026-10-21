@@ -66,3 +66,44 @@ models:
         data_tests:
           - in_range:
               arguments: {min_value: 0, max_value: 1}
+
+  - name: station_rebalancing_priority
+    description: Q3. Estimated rides lost per week to empty or full stations, ranked.
+    columns:
+      - name: station_id
+        data_tests: [unique, not_null]
+      - name: lost_trips_per_week
+        data_tests:
+          - in_range:
+              arguments: {min_value: 0}
+      - name: priority_rank
+        data_tests: [not_null]
+
+  - name: inferred_truck_visits
+    description: Q4. Slot-to-slot jumps in total bikes too large for riders alone (truck drop-offs and pickups).
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [station_id, slot_ts]
+    columns:
+      - name: visit_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [drop_off, pickup]
+      - name: threshold
+        data_tests:
+          - in_range:
+              arguments: {min_value: 6}
+
+  - name: station_truck_summary
+    description: Q4. Truck visits per week vs need, and which high-priority stations are underserved.
+    columns:
+      - name: station_id
+        data_tests: [unique, not_null]
+      - name: visits_per_week
+        data_tests:
+          - in_range:
+              arguments: {min_value: 0}
+      - name: is_underserved
+        data_tests: [not_null]
