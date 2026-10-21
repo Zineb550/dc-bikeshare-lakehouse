@@ -26,8 +26,14 @@ def test_expected_dags_are_present(dagbag):
 @pytest.mark.parametrize(
     ("dag_id", "tasks"),
     [
-        ("daily_pipeline", ["invoke_weather", "write_run_log"]),
-        ("trips_monthly", ["wait_for_trip_file", "invoke_trips", "write_run_log"]),
+        (
+            "daily_pipeline",
+            ["invoke_weather", "dbt_source_freshness", "dbt_build", "write_run_log"],
+        ),
+        (
+            "trips_monthly",
+            ["wait_for_trip_file", "invoke_trips", "dbt_build_trips", "write_run_log"],
+        ),
     ],
 )
 def test_task_order(dagbag, dag_id, tasks):

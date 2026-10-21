@@ -1,4 +1,4 @@
-"""trips_monthly: wait for last month's trip file, land it in bronze, then (from group 6) dbt.
+"""trips_monthly: wait for last month's trip file, land it in bronze, then build fct_trip+.
 
 Fires at 06:00 UTC on the 1st of month M and processes month M-1. Capital Bikeshare
 publishes a few days into the month, so the sensor checks every 6 hours for up to
@@ -12,7 +12,7 @@ import requests
 from airflow.sdk import TriggerRule, dag, task
 from airflow.timetables.trigger import CronTriggerTimetable
 
-from include.bikeshare import lambda_client, periods, runlog
+from include.bikeshare import dbt, lambda_client, periods, runlog
 from include.bikeshare.alerts import notify_failure
 
 DEFAULT_ARGS = {
@@ -45,6 +45,16 @@ def trips_monthly():
         month = periods.target_month(context["logical_date"] or datetime.now(UTC))
         return lambda_client.invoke({"source": "trips", "mode": "airflow", "month": month})
 
+    @task(retries=1)
+    def dbt_build_trips(**context) -> dict:
+        ti = context["ti"]
+        month = periods.target_month(context["logical_date"] or datetime.now(UTC))
+        return dbt.run(
+            ["build", "--select", "fct_trip+"],
+            target_dir=dbt.artifacts_dir(ti.dag_id, ti.run_id, ti.task_id),
+            dbt_vars=dbt.month_vars(month),
+        )
+
     @task(trigger_rule=TriggerRule.ALL_DONE, retries=0)
     def write_run_log(**context) -> str:
         ti, dag_run = context["ti"], context["dag_run"]
@@ -52,16 +62,17 @@ def trips_monthly():
         records = [
             runlog.task_record(
                 dag_id=ti.dag_id,
-                task_id="invoke_trips",
+                task_id=task_id,
                 run_id=ti.run_id,
                 run_type=str(dag_run.run_type),
                 period=month,
-                result=ti.xcom_pull(task_ids="invoke_trips"),
+                result=ti.xcom_pull(task_ids=task_id),
             )
+            for task_id in ["invoke_trips", "dbt_build_trips"]
         ]
         return runlog.write(records, dag_id=ti.dag_id, run_id=ti.run_id)
 
-    wait_for_trip_file() >> invoke_trips() >> write_run_log()
+    wait_for_trip_file() >> invoke_trips() >> dbt_build_trips() >> write_run_log()
 
 
 trips_monthly()
