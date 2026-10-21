@@ -107,3 +107,23 @@ models:
               arguments: {min_value: 0}
       - name: is_underserved
         data_tests: [not_null]
+
+  - name: station_recovery
+    description: Q6. How long stations stay empty once they run out, by day type and local hour of onset.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [station_id, day_type, onset_local_hour]
+    columns:
+      - name: n_streaks
+        data_tests:
+          - in_range:
+              arguments: {min_value: 1}
+      - name: median_duration_min
+        data_tests:
+          - in_range:
+              arguments: {min_value: 15}
+      - name: share_over_60_min
+        data_tests:
+          - in_range:
+              arguments: {min_value: 0, max_value: 1}
