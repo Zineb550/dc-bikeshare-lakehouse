@@ -1,0 +1,68 @@
+version: 2
+
+models:
+  - name: station_availability_profile
+    description: Q1. Share of time each station is empty or full, by day type and local hour.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [station_id, day_type, local_hour]
+    columns:
+      - name: day_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [weekday, weekend]
+      - name: local_hour
+        data_tests:
+          - in_range:
+              arguments: {min_value: 0, max_value: 23}
+      - name: pct_empty
+        data_tests:
+          - in_range:
+              arguments: {min_value: 0, max_value: 1}
+      - name: pct_full
+        data_tests:
+          - in_range:
+              arguments: {min_value: 0, max_value: 1}
+      - name: n_snapshots
+        data_tests:
+          - in_range:
+              arguments: {min_value: 8}
+
+  - name: weather_ridership_daily
+    description: Q2. Daily rides vs weather, with a dry-and-mild baseline and lost rides.
+    columns:
+      - name: local_date
+        data_tests: [unique, not_null]
+      - name: weather_bucket
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [dry, light_rain, heavy_rain]
+      - name: temp_bucket
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [cold, mild, hot]
+      - name: lost_trips
+        data_tests:
+          - in_range:
+              arguments: {min_value: 0}
+
+  - name: rider_segments
+    description: Q5. Rides by rider type, day type and local hour, with duration, e-bike share and top stations.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [member_casual, day_type, local_hour]
+    columns:
+      - name: member_casual
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [member, casual]
+      - name: ebike_share
+        data_tests:
+          - in_range:
+              arguments: {min_value: 0, max_value: 1}
