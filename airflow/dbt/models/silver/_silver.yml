@@ -1,0 +1,131 @@
+version: 2
+
+models:
+  - name: dim_station
+    description: One row per GBFS station; latest attributes, region name from seed_regions.
+    columns:
+      - name: station_id
+        data_tests: [unique, not_null]
+      - name: region_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('seed_regions')
+                field: region_id
+              config:
+                severity: warn
+      - name: region_name
+        data_tests: [not_null]
+      - name: capacity
+        data_tests:
+          - in_range:
+              arguments:
+                min_value: 0
+
+  - name: station_status
+    description: One row per station per 15-minute slot (UTC), with is_empty, is_full, is_stale and prev_* values.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [station_id, slot_ts]
+      - slot_completeness:
+          name: slot_completeness_warn
+          arguments:
+            min_rate: 0.90
+          config:
+            severity: warn
+      - slot_completeness:
+          name: slot_completeness_error
+          arguments:
+            min_rate: 0.75
+    columns:
+      - name: station_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_station')
+                field: station_id
+              config:
+                severity: warn
+      - name: slot_ts
+        data_tests: [not_null]
+      - name: fill_ratio
+        data_tests:
+          - in_range:
+              arguments:
+                min_value: 0
+                max_value: 1
+      - name: bikes_available
+        data_tests:
+          - in_range:
+              arguments:
+                min_value: 0
+      - name: docks_available
+        data_tests:
+          - in_range:
+              arguments:
+                min_value: 0
+
+  - name: fct_trip
+    description: One row per ride (UTC) with stations resolved to GBFS station_id and quality flags.
+    data_tests:
+      - crosswalk_rate:
+          name: crosswalk_rate_warn
+          arguments:
+            min_rate: 0.99
+          config:
+            severity: warn
+      - crosswalk_rate:
+          name: crosswalk_rate_error
+          arguments:
+            min_rate: 0.97
+      - month_over_month_rows:
+          name: trip_rows_month_over_month_warn
+          arguments:
+            max_change: 0.5
+          config:
+            severity: warn
+      - month_over_month_rows:
+          name: trip_rows_month_over_month_error
+          arguments:
+            max_change: 0.8
+    columns:
+      - name: ride_id
+        data_tests: [unique, not_null]
+      - name: started_at
+        data_tests: [not_null]
+      - name: rideable_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [electric_bike, classic_bike]
+      - name: member_casual
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [member, casual]
+      - name: duration_min
+        data_tests:
+          - in_range:
+              arguments:
+                min_value: 0
+              config:
+                severity: warn
+
+  - name: weather_hourly
+    description: One row per hour (UTC) for Washington, DC; latest fetch wins.
+    columns:
+      - name: hour_ts
+        data_tests: [unique, not_null]
+      - name: temperature_c
+        data_tests:
+          - in_range:
+              arguments:
+                min_value: -40
+                max_value: 50
+      - name: precipitation_mm
+        data_tests:
+          - in_range:
+              arguments:
+                min_value: 0
