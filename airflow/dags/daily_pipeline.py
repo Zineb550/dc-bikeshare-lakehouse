@@ -59,10 +59,14 @@ def daily_pipeline():
     def dbt_build(**context) -> dict:
         # Everything except fct_trip itself (trips_monthly loads it); gold is rebuilt daily
         # from the current fct_trip, so daily snapshots refresh the rankings.
+        # Catching up on old days, gold is skipped: it is a full rebuild, done once at the end.
         ti = context["ti"]
         day = periods.target_day(context["logical_date"] or datetime.now(UTC))
+        exclude = ["fct_trip"]
+        if periods.is_catch_up(day, today=datetime.now(UTC).date()):
+            exclude.append("path:models/gold")
         return dbt.run(
-            ["build", "--exclude", "fct_trip"],
+            ["build", "--exclude", *exclude],
             target_dir=dbt.artifacts_dir(ti.dag_id, ti.run_id, ti.task_id),
             dbt_vars=dbt.day_vars(day),
         )

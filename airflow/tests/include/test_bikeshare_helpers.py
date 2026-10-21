@@ -203,3 +203,11 @@ def test_failed_dbt_run_raises(tmp_path, monkeypatch):
     monkeypatch.setattr(dbt.subprocess, "run", lambda *a, **k: Done())
     with pytest.raises(dbt.DbtError):
         dbt.run(["build"], target_dir=tmp_path)
+
+
+@pytest.mark.parametrize(
+    ("day", "catch_up"),
+    [(date(2026, 10, 19), False), (date(2026, 10, 18), False), (date(2026, 4, 1), True)],
+)
+def test_old_days_are_catch_up(day, catch_up):
+    assert periods.is_catch_up(day, today=date(2026, 10, 20)) is catch_up
