@@ -1,0 +1,11 @@
+version: 2
+
+models:
+  - name: stg_gbfs__station_status
+    description: GBFS station status unnested to one row per station per 15-minute slot (UTC).
+  - name: stg_gbfs__station_information
+    description: GBFS station information unnested to one row per station per hourly document.
+  - name: stg_trips
+    description: Trip history typed; started_at / ended_at converted from New York local time to UTC.
+  - name: stg_weather__hourly
+    description: Open-Meteo hourly values, one row per hour per fetch (UTC).

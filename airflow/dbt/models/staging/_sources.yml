@@ -1,0 +1,36 @@
+version: 2
+
+sources:
+  - name: bronze
+    description: Raw landing tables (Glue external tables with partition projection, created by Terraform).
+    schema: bronze
+    tables:
+      - name: gbfs_station_status
+        description: One GBFS station_status document per 15-minute slot.
+        config:
+          loaded_at_field: "cast(from_unixtime(last_updated) as timestamp)"
+          freshness:
+            warn_after: {count: 1, period: hour}
+            error_after: {count: 3, period: hour}
+            filter: "dt >= cast(current_date - interval '1' day as varchar)"
+
+      - name: gbfs_station_information
+        description: One GBFS station_information document per hour.
+
+      - name: trips
+        description: Capital Bikeshare monthly trip files, every column a string, as published.
+        config:
+          loaded_at_field: "cast(substr(started_at, 1, 19) as timestamp)"
+          freshness:
+            warn_after: {count: 40, period: day}
+            error_after: {count: 70, period: day}
+            filter: "month >= format_datetime(current_date - interval '4' month, 'yyyy-MM')"
+
+      - name: weather_raw
+        description: One Open-Meteo hourly response per daily run (overlapping 8-day windows).
+        config:
+          loaded_at_field: "cast(replace(substr(ingest_meta.fetched_at, 1, 19), 'T', ' ') as timestamp)"
+          freshness:
+            warn_after: {count: 2, period: day}
+            error_after: {count: 8, period: day}
+            filter: "fetch_date >= cast(current_date - interval '30' day as varchar)"

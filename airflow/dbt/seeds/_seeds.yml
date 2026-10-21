@@ -1,0 +1,16 @@
+version: 2
+
+seeds:
+  - name: seed_regions
+    description: >
+      Capital Bikeshare regions from GBFS system_regions.json (dca-cabi, v2.3), fetched once
+      on 2026-10-20. Stations without a region map to Unknown in dim_station.
+    config:
+      column_types:
+        region_id: string
+        region_name: string
+    columns:
+      - name: region_id
+        data_tests: [unique, not_null]
+      - name: region_name
+        data_tests: [not_null]
