@@ -79,3 +79,16 @@ airflow-test: ## Run the DAG integrity and helper tests inside the Airflow image
 
 airflow-parse: ## Check that every DAG imports without errors
 	cd airflow && astro dev parse
+
+# --- dbt: runs locally with the Airflow user's credentials from airflow/.env ---
+DBT_VENV = .venv-dbt
+DBT = cd airflow/dbt && set -a && . ../.env && set +a && DBT_PROFILES_DIR=. ../../$(DBT_VENV)/bin/dbt
+
+.PHONY: dbt-venv dbt
+dbt-venv: ## Create .venv-dbt with the pinned dbt-core and dbt-athena
+	python3.12 -m venv $(DBT_VENV)
+	$(DBT_VENV)/bin/pip install -q --upgrade pip
+	$(DBT_VENV)/bin/pip install -q -r airflow/dbt/requirements.txt
+
+dbt: ## Run dbt against Athena, e.g. make dbt ARGS="build -s staging"
+	$(DBT) $(ARGS)

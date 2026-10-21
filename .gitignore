@@ -67,3 +67,9 @@ metabase-data/
 Thumbs.db
 desktop.ini
 airflow/.astro/config.yaml.lock
+
+# --- dbt ---
+.venv-dbt/
+airflow/dbt/.user.yml
+# Seeds are small reference tables, not data dumps
+!airflow/dbt/seeds/*.csv
