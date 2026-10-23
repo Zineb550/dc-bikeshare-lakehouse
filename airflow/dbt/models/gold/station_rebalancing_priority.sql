@@ -32,6 +32,7 @@ trips as (
         {{ to_local('ended_at') }} as end_local
     from {{ ref('fct_trip') }}
     where not is_short and not is_long
+      and source_month = (select max(source_month) from {{ ref('fct_trip') }})
 ),
 
 days_observed as (
