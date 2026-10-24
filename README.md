@@ -10,12 +10,12 @@ A batch data platform on AWS for Capital Bikeshare (Washington DC). It collects 
 | --- | --- | --- | --- |
 | Q1 | Where and when are stations empty or full? | `station_availability_profile` | Hour-by-hour profile per station and day type. At priority stations, empty episodes cluster between 8:00 and 13:00 on weekdays (14th & Belmont St NW is empty 73% of the time at 9:00). |
 | Q2 | How much ridership do rain, heat and cold cost? | `weather_ridership_daily` | Heavy-rain days fall well below a normal day: 9,879 rides on 2026-09-22 against a baseline of 23,958. |
-| Q3 | Which stations should be rebalanced first? | `station_rebalancing_priority` | The top 10 stations lose about 1,750 rides a week (lower bound), 89% of them to full docks. |
+| Q3 | Which stations should be rebalanced first? | `station_rebalancing_priority` | The top 10 stations lose about 1,800 rides a week (lower bound), 89% of them to full docks. |
 | Q4 | Where do trucks go, and which priority stations get too few visits? | `inferred_truck_visits`, `station_truck_summary` | 86 of 871 stations are flagged as underserved: in the top 10% of priority, but visited less often than they hit a peak. |
 | Q5 | How do members and casual riders differ? | `rider_segments` | On weekdays, members peak at 8:00 and 17:00 (commuting); on weekends, both groups peak around 15:00. |
 | Q6 | How long does a station stay empty once it empties? | `station_recovery` | Median recovery time per station, day type and hour of onset. |
 
-Data: about 3.8 million rides (April to September 2026) and GBFS snapshots of 871 stations every 15 minutes since 2026-10-04.
+Data: 3,829,361 rides (April to September 2026) and GBFS snapshots of 871 stations every 15 minutes since 2026-10-04.
 
 ## Architecture
 
@@ -59,19 +59,20 @@ Silver stores timestamps in UTC; gold converts them to Washington local time (`A
 - **At ingestion:** each payload is validated. A failing file goes to `quarantine/` and triggers an alert; it never reaches bronze.
 - **In silver:** odd rows are kept and flagged (rides under 1 minute or over 24 hours, stale snapshots, dockless trips); gold filters on the flags.
 - **dbt tests:** source freshness, `unique` and `not_null` on keys, value ranges, and cross-source checks: share of trips that match a station (100% measured on August 2026), share of the 96 daily slots collected, month-over-month trip counts.
-- **Idempotency:** every run processes its own data interval, S3 keys derive from the scheduled time, and silver uses MERGE. The full backfill was run twice and gave identical row counts:
+- **Idempotency:** every run processes its own data interval, S3 keys derive from the scheduled time, and silver uses MERGE. Rerunning past periods (a September trip load and several past days) gave identical row counts:
 
 | Table | Rows, first run | Rows, second run |
 | --- | --- | --- |
-| `silver.fct_trip` | | |
-| `silver.station_status` | | |
-| `silver.weather_hourly` | | |
-| `silver.dim_station` | | |
+| `silver.fct_trip` | 3,829,361 | 3,829,361 |
+| `silver.station_status` | 1,540,838 | 1,540,838 |
+| `silver.weather_hourly` | 5,112 | 5,112 |
+| `silver.dim_station` | 873 | 873 |
 
 ```sql
-select 'fct_trip' as t, count(*) from silver.fct_trip
-union all select 'station_status', count(*) from silver.station_status
-union all select 'weather_hourly', count(*) from silver.weather_hourly
+-- Collection never stops, so counts are taken on a closed period.
+select 'fct_trip' as t, count(*) as n from silver.fct_trip
+union all select 'station_status', count(*) from silver.station_status where slot_ts < timestamp '2026-10-24 00:00:00'
+union all select 'weather_hourly', count(*) from silver.weather_hourly where hour_ts < timestamp '2026-10-24 00:00:00'
 union all select 'dim_station', count(*) from silver.dim_station;
 ```
 
