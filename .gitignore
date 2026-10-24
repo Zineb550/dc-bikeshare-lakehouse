@@ -73,3 +73,5 @@ airflow/.astro/config.yaml.lock
 airflow/dbt/.user.yml
 # Seeds are small reference tables, not data dumps
 !airflow/dbt/seeds/*.csv
+dashboards/metabase-data/
+dashboards/plugins/
