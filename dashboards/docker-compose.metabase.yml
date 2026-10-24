@@ -1,0 +1,18 @@
+# Metabase, run on its own: never while Airflow is up (both need RAM).
+# Start:  make metabase-start      Stop:  make metabase-stop
+# The Athena connection uses the dc-bikeshare-metabase key (see README); no secret lives here.
+services:
+  metabase:
+    # Pin ONE stable tag from https://hub.docker.com/r/metabase/metabase/tags and keep it.
+    image: metabase/metabase:v0.65.x
+    ports:
+      - "3000:3000"
+    environment:
+      MB_JAVA_OPTS: "-Xmx1g"
+      MB_DB_FILE: /metabase-data/metabase.db
+      MB_PLUGINS_DIR: /plugins
+    volumes:
+      - ./metabase-data:/metabase-data
+      # Community Athena driver (not bundled with Metabase): download the jar for the same tag.
+      - ./plugins:/plugins:ro
+    restart: "no"

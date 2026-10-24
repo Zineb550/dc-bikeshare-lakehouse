@@ -92,3 +92,11 @@ dbt-venv: ## Create .venv-dbt with the pinned dbt-core and dbt-athena
 
 dbt: ## Run dbt against Athena, e.g. make dbt ARGS="build -s staging"
 	$(DBT) $(ARGS)
+
+# --- Metabase (group 9): never run together with Airflow ---
+.PHONY: metabase-start metabase-stop
+metabase-start: ## Start Metabase on http://localhost:3000 (stop Airflow first)
+	docker compose -f dashboards/docker-compose.metabase.yml up -d
+
+metabase-stop: ## Stop Metabase
+	docker compose -f dashboards/docker-compose.metabase.yml down
